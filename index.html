@@ -1,0 +1,687 @@
+<!DOCTYPE html>
+<html lang="zh-TW">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Conspiracy of Shadows - 角色開發面板 (v2.6)</title>
+    <link href="https://fonts.googleapis.com/css2?family=EB+Garamond:ital,wght@0,400;0,700;1,400&display=swap" rel="stylesheet">
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script>
+        tailwind.config = {
+            theme: {
+                extend: {
+                    colors: {
+                        parchment: '#f4ecd8',
+                        ink: '#2d241e',
+                        blood: '#8b0000',
+                        shadow: '#1a1a1a',
+                        gold: '#a67c00',
+                    },
+                    fontFamily: { serif: ['EB Garamond', 'serif'] },
+                }
+            }
+        }
+    </script>
+    <style>
+        body { background-color: #1a1a1a; color: #2d241e; font-family: 'EB Garamond', serif; }
+        .parchment-bg {
+            background-color: #f4ecd8;
+            background-image: url("https://www.transparenttextures.com/patterns/p6.png");
+            box-shadow: 0 0 30px rgba(0,0,0,0.7);
+        }
+        input, select, textarea {
+            background: rgba(255,255,255,0.2);
+            border-bottom: 1px solid rgba(45, 36, 30, 0.4);
+            outline: none;
+            padding: 2px 4px;
+        }
+        textarea { border: 1px solid rgba(45, 36, 30, 0.25); border-radius: 4px; padding: 6px 8px; }
+        input:focus, select:focus, textarea:focus { border-color: #8b0000; background: rgba(255,255,255,0.5); }
+        .stat-label { font-weight: bold; text-transform: uppercase; letter-spacing: 0.05em; font-size: 0.85rem; color: #4a3b31; }
+        .section-title {
+            border-bottom: 2px solid #2d241e;
+            margin-bottom: 1rem; padding-bottom: 0.2rem;
+            font-weight: bold; font-size: 1.3rem;
+            display: flex; align-items: center;
+        }
+        .section-title::before { content: "◈ "; color: #8b0000; margin-right: 0.5rem; }
+        .counter-badge {
+            font-family: sans-serif; font-size: 0.7rem; padding: 2px 8px; border-radius: 10px; margin-left: 8px;
+            transition: all 0.3s ease;
+        }
+        .valid { background-color: #d1fae5; color: #065f46; box-shadow: 0 0 5px #10b981; }
+        .invalid { background-color: #fee2e2; color: #991b1b; }
+        .lore-box { font-size: 0.8rem; line-height: 1.4; color: #5a4a3f; font-style: italic; }
+        .mini-note { font-size: 0.72rem; opacity: 0.75; }
+        .chip { font-family: sans-serif; font-size: 0.72rem; padding: 2px 8px; border-radius: 999px; background: rgba(0,0,0,0.06); }
+        .skill-card { min-height: 122px; }
+    </style>
+</head>
+<body class="p-2 md:p-8">
+
+<div class="max-w-5xl mx-auto parchment-bg p-4 md:p-10 rounded-sm border-2 border-ink border-double">
+
+    <!-- Header -->
+    <header class="text-center mb-8">
+        <h1 class="text-4xl md:text-5xl font-bold uppercase tracking-tighter border-b-4 border-double border-ink pb-2">Conspiracy of Shadows</h1>
+        <div class="flex justify-center gap-4 mt-2 italic opacity-80">
+            <span>Gothic Horror Roleplaying</span>
+            <span>•</span>
+            <span>Official Character Record</span>
+        </div>
+    </header>
+
+    <form id="charSheet" onsubmit="return false;">
+
+        <!-- 1. Concept & Identity -->
+        <section class="mb-10">
+            <h2 class="section-title">核心概念 (Concept & Identity)</h2>
+
+            <div class="grid grid-cols-1 md:grid-cols-3 gap-6">
+                <div class="flex flex-col">
+                    <label class="stat-label">姓名 Name</label>
+                    <input type="text">
+                </div>
+
+                <div class="flex flex-col">
+                    <label class="stat-label">驅動力 Drive</label>
+                    <input type="text">
+                </div>
+
+                <div class="flex flex-col">
+                    <label class="stat-label">觸發事件 Trigger</label>
+                    <input type="text">
+                </div>
+
+                <!-- Ethnicity Selection -->
+                <div class="flex flex-col">
+                    <label class="stat-label">種族 Ethnicity</label>
+                    <select id="ethnicity-select" class="font-bold text-blood">
+                        <option value="">-- 選擇種族 --</option>
+                    </select>
+                    <p id="ethnicity-desc" class="lore-box mt-2 min-h-[3em]">請選擇一個文化圈以查看其背景設定...</p>
+                </div>
+
+                <!-- Social Status Selection -->
+                <div class="flex flex-col">
+                    <label class="stat-label">社會階級 Social Status</label>
+                    <select id="status-select">
+                        <option value="">請先選擇種族</option>
+                    </select>
+                    <p id="status-desc" class="lore-box mt-2 min-h-[3em]">階級決定了您在遊戲開始時的社會影響力與資源。</p>
+                </div>
+
+                <!-- Asset Points (Derived) -->
+                <div class="flex flex-col bg-amber-100 bg-opacity-40 p-3 rounded border border-gold/20 shadow-inner">
+                    <label class="stat-label text-gold">資產點數 Asset Points</label>
+                    <div id="asset-points-display" class="text-4xl font-bold text-center mt-2">0</div>
+                    <p class="text-[10px] text-center opacity-60 mt-2 uppercase tracking-tighter">決定團隊資源的關鍵數值</p>
+                </div>
+
+                <div class="flex flex-col">
+                    <label class="stat-label">掩護身分 Cover</label>
+                    <input type="text" placeholder="例如：騎士、異端審判官">
+                </div>
+
+                <!-- Piety + Rank (新增 Rank 1~6) -->
+                <div class="flex flex-col">
+                    <label class="stat-label">虔誠度 Piety</label>
+                    <div class="grid grid-cols-3 gap-2 items-end">
+                        <input type="text" class="col-span-2" placeholder="信仰/教派名稱…">
+                        <input type="number" min="1" max="6" value="1" class="text-center font-bold text-blood" title="Piety Rank (1~6)">
+                    </div>
+                    <div class="mini-note mt-1">Rank (1~6) 會在堅守信仰相關判定中提供加值骰。</div>
+                </div>
+
+                <div class="flex flex-col">
+                    <label class="stat-label">語言 Languages</label>
+                    <input type="text" placeholder="母語, 識字能力...">
+                </div>
+            </div>
+        </section>
+
+        <!-- 1.5 Fate / Doom / Taint (新增) -->
+        <section class="mb-10">
+            <h2 class="section-title">命運與腐化 (Fate, Doom & Taint)</h2>
+
+            <div class="grid grid-cols-1 lg:grid-cols-3 gap-6">
+                <!-- Destiny Pool -->
+                <div class="bg-white/30 p-4 border border-ink/10 rounded">
+                    <div class="flex items-center justify-between">
+                        <label class="stat-label text-gold">命運池 Destiny Pool</label>
+                        <span class="chip">起始 1</span>
+                    </div>
+                    <input type="number" min="0" value="1" class="w-full text-center text-3xl font-bold text-gold mt-2">
+                    <p class="mini-note mt-2">可用於奪取敘事控制、升級屬性或購買新技能等。</p>
+                </div>
+
+                <!-- Doom -->
+                <div class="bg-white/30 p-4 border border-ink/10 rounded">
+                    <div class="flex items-center justify-between">
+                        <label class="stat-label text-blood">宿命 Doom</label>
+                        <span class="chip">Rank 1~6</span>
+                    </div>
+                    <div class="grid grid-cols-3 gap-2 mt-2">
+                        <div class="col-span-2 flex flex-col">
+                            <label class="mini-note">Doom Descriptor</label>
+                            <input type="text" placeholder="例如：『注定背叛所愛之人』">
+                        </div>
+                        <div class="flex flex-col">
+                            <label class="mini-note text-center">Rank</label>
+                            <input type="number" min="1" max="6" value="1" class="text-center font-bold text-blood">
+                        </div>
+                    </div>
+                    <p class="mini-note mt-2">每個角色都需要一段與宿命相關的描述詞，並記錄宿命等級。</p>
+                </div>
+
+                <!-- Taint -->
+                <div class="bg-white/30 p-4 border border-ink/10 rounded">
+                    <div class="flex items-center justify-between">
+                        <label class="stat-label">腐化 Taint</label>
+                        <span class="chip">Rank 1~6</span>
+                    </div>
+                    <div class="grid grid-cols-3 gap-2 mt-2">
+                        <div class="col-span-2 flex flex-col">
+                            <label class="mini-note">Taint 記錄</label>
+                            <input type="text" placeholder="一句話記錄腐化表現…">
+                        </div>
+                        <div class="flex flex-col">
+                            <label class="mini-note text-center">Rank</label>
+                            <input type="number" min="1" max="6" value="1" class="text-center font-bold">
+                        </div>
+                    </div>
+
+                    <div class="grid grid-cols-1 gap-2 mt-3">
+                        <div>
+                            <label class="mini-note font-bold">Positive (正面效果)</label>
+                            <textarea rows="2" placeholder="每提升一級得到的正面效果，簡短記錄…"></textarea>
+                        </div>
+                        <div>
+                            <label class="mini-note font-bold text-blood">Negative (負面效果)</label>
+                            <textarea rows="2" placeholder="每提升一級得到的負面效果，簡短記錄…"></textarea>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </section>
+
+        <div class="grid grid-cols-1 lg:grid-cols-2 gap-8 mb-8">
+            <!-- 2. Attributes -->
+            <section>
+                <div class="flex items-center justify-between border-b-2 border-ink mb-4">
+                    <h2 class="font-bold text-xl uppercase italic">屬性 Attributes</h2>
+                    <span id="attr-counter" class="counter-badge invalid">分配: 4 / 11</span>
+                </div>
+
+                <div class="space-y-4">
+                    <div class="grid grid-cols-4 gap-2 items-end">
+                        <div class="col-span-1 flex flex-col">
+                            <label class="stat-label text-blood">體魄 Fort</label>
+                            <input type="number" id="attr-fort" value="1" min="1" max="5" class="attr-input text-xl font-bold text-blood text-center">
+                        </div>
+                        <div class="col-span-3 flex flex-col">
+                            <label class="stat-label opacity-60 italic">Descriptor (如：強壯如牛)</label>
+                            <input type="text">
+                        </div>
+                    </div>
+
+                    <div class="grid grid-cols-4 gap-2 items-end">
+                        <div class="col-span-1 flex flex-col">
+                            <label class="stat-label">反射 Refl</label>
+                            <input type="number" id="attr-refl" value="1" min="1" max="5" class="attr-input text-xl font-bold text-center">
+                        </div>
+                        <div class="col-span-3 flex flex-col">
+                            <label class="stat-label opacity-60 italic">Descriptor (如：貓般的反應)</label>
+                            <input type="text">
+                        </div>
+                    </div>
+
+                    <div class="grid grid-cols-4 gap-2 items-end">
+                        <div class="col-span-1 flex flex-col">
+                            <label class="stat-label">知識 Know</label>
+                            <input type="number" id="attr-know" value="1" min="1" max="5" class="attr-input text-xl font-bold text-center">
+                        </div>
+                        <div class="col-span-3 flex flex-col">
+                            <label class="stat-label opacity-60 italic">Descriptor (如：博學多聞)</label>
+                            <input type="text">
+                        </div>
+                    </div>
+
+                    <div class="grid grid-cols-4 gap-2 items-end">
+                        <div class="col-span-1 flex flex-col">
+                            <label class="stat-label text-blood">氣質 Temp</label>
+                            <input type="number" id="attr-temp" value="1" min="1" max="5" class="attr-input text-xl font-bold text-blood text-center">
+                        </div>
+                        <div class="col-span-3 flex flex-col">
+                            <label class="stat-label opacity-60 italic">Descriptor (如：鋼鐵意志)</label>
+                            <input type="text">
+                        </div>
+                    </div>
+                </div>
+            </section>
+
+            <!-- 3. Derived Stats -->
+            <section class="bg-black bg-opacity-5 p-4 border border-ink border-opacity-20 relative">
+                <h2 class="section-title">衍生數值與生命</h2>
+
+                <div class="grid grid-cols-2 gap-4 mb-6 text-center">
+                    <div class="border-r border-ink border-opacity-10">
+                        <label class="stat-label block">生命總值 Vitality</label>
+                        <span id="vit-display" class="text-4xl font-bold text-blood">8</span>
+                        <p class="text-[10px] opacity-60 mt-1 uppercase">6 + Fort + Temp</p>
+                    </div>
+                    <div>
+                        <label class="stat-label block">巫血等級 WB Rank</label>
+                        <span id="wb-rank-display" class="text-4xl font-bold text-purple-900">1</span>
+                        <p class="text-[10px] opacity-60 mt-1 uppercase">Ceil((Fort+Temp)/2)</p>
+                    </div>
+                </div>
+
+                <!-- Vitality Levels (修正：Penalty Dice 顯示) -->
+                <div class="space-y-1 text-sm">
+                    <div class="flex justify-between items-center border-b border-ink/10">
+                        <span>Fine (良好)</span>
+                        <span class="text-[10px] italic">0 懲罰骰</span>
+                        <input type="checkbox" class="accent-blood">
+                    </div>
+                    <div class="flex justify-between items-center border-b border-ink/10">
+                        <span>Bruised (瘀傷)</span>
+                        <span class="text-[10px] italic">0 懲罰骰</span>
+                        <input type="checkbox" class="accent-blood">
+                    </div>
+                    <div class="flex justify-between items-center border-b border-ink/10">
+                        <span>Battered (重創)</span>
+                        <span class="text-[10px] italic">1D6 Penalty</span>
+                        <input type="checkbox" class="accent-blood">
+                    </div>
+                    <div class="flex justify-between items-center border-b border-ink/10">
+                        <span>Bloodied (流血)</span>
+                        <span class="text-[10px] italic">2D6 Penalty</span>
+                        <input type="checkbox" class="accent-blood">
+                    </div>
+                    <div class="flex justify-between items-center border-b border-ink/10">
+                        <span>Broken (殘廢)</span>
+                        <span class="text-[10px] italic">3D6 Penalty</span>
+                        <input type="checkbox" class="accent-blood">
+                    </div>
+                    <div class="flex justify-between items-center font-bold text-blood">
+                        <span>Incapacitated (失能)</span>
+                        <span class="text-[10px] italic">Take No Actions</span>
+                        <input type="checkbox" class="accent-blood">
+                    </div>
+                </div>
+
+                <div class="mt-4 text-[11px] opacity-70 italic">
+                    ※ 此處僅修正「介面顯示」為 Penalty Dice；實際擲骰扣骰仍由你桌上流程決定。
+                </div>
+            </section>
+        </div>
+
+        <!-- 3.5 Witchblood Details (新增：WB Rank > 0 展開) -->
+        <section id="witchblood-section" class="mb-10 hidden">
+            <h2 class="section-title">巫血詳情 (Witchblood Details)</h2>
+
+            <div class="bg-white/30 p-5 border border-ink/10 rounded">
+                <div class="flex items-center justify-between mb-3">
+                    <div class="flex items-center gap-2">
+                        <span class="stat-label text-purple-900">WB Rank</span>
+                        <span id="wb-rank-chip" class="chip font-bold text-purple-900">1</span>
+                    </div>
+                    <div class="mini-note">當 WB Rank &gt; 0 時顯示本區塊</div>
+                </div>
+
+                <div class="grid grid-cols-1 lg:grid-cols-3 gap-4">
+                    <div class="lg:col-span-1">
+                        <label class="stat-label">血統 / 起源 Bloodline</label>
+                        <input type="text" placeholder="例如：古老家族、邪神盟誓、禁忌儀式…">
+                        <div class="mini-note mt-2">用一句話標記巫血來源或血統背景。</div>
+                    </div>
+
+                    <div class="lg:col-span-2 grid grid-cols-1 gap-3">
+                        <div>
+                            <label class="stat-label">巫血能力清單 Witchblood Powers</label>
+                            <textarea rows="4" placeholder="以條列記錄能力，並可註記觸發條件/消耗…"></textarea>
+                            <div class="mini-note mt-1">你可在每行前加「•」或「-」做條列。</div>
+                        </div>
+
+                        <div>
+                            <label class="stat-label text-blood">專屬負面描述 Negative Descriptor</label>
+                            <input type="text" placeholder="例如：『每次使用能力，視線會出現黑霧』">
+                            <div class="mini-note mt-1">這是與能力使用綁定的負面描述，用來提醒代價/副作用。</div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </section>
+
+        <!-- 4. Skills -->
+        <section class="mb-10">
+            <div class="flex items-center justify-between border-b-2 border-ink mb-4">
+                <h2 class="font-bold text-xl uppercase italic">核心技能 Skills (17點 / 6項)</h2>
+                <span id="skill-counter" class="counter-badge invalid">分配: 0 / 17</span>
+            </div>
+            <div id="skills-grid" class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+                <!-- Skills Injected by JS -->
+            </div>
+            <div class="mini-note mt-3 italic">
+                ※ 每一項技能都需要 Descriptor（本頁每列已補上）。
+            </div>
+        </section>
+
+        <!-- 5. Weapons, Armor & Equipment (新增) -->
+        <section class="mb-10">
+            <h2 class="section-title">裝備、武器與護甲 (Weapons, Armor & Equipment)</h2>
+
+            <div class="grid grid-cols-1 lg:grid-cols-2 gap-6">
+                <!-- Weapons -->
+                <div class="bg-white/30 p-4 border border-ink/10 rounded">
+                    <div class="flex items-center justify-between mb-2">
+                        <label class="stat-label">武器 Weapons</label>
+                        <span class="mini-note">攻擊/特殊加值</span>
+                    </div>
+
+                    <div class="space-y-3" id="weapons-list">
+                        <div class="grid grid-cols-12 gap-2 items-end">
+                            <div class="col-span-4">
+                                <label class="mini-note">名稱</label>
+                                <input type="text" placeholder="例如：長劍">
+                            </div>
+                            <div class="col-span-2">
+                                <label class="mini-note text-center">Atk</label>
+                                <input type="text" class="text-center" placeholder="+?">
+                            </div>
+                            <div class="col-span-6">
+                                <label class="mini-note">特殊效果</label>
+                                <input type="text" placeholder="對硬甲+2 / 對軟甲+3 / 其他…">
+                            </div>
+                        </div>
+
+                        <div class="grid grid-cols-12 gap-2 items-end">
+                            <div class="col-span-4">
+                                <label class="mini-note">名稱</label>
+                                <input type="text">
+                            </div>
+                            <div class="col-span-2">
+                                <label class="mini-note text-center">Atk</label>
+                                <input type="text" class="text-center">
+                            </div>
+                            <div class="col-span-6">
+                                <label class="mini-note">特殊效果</label>
+                                <input type="text">
+                            </div>
+                        </div>
+
+                        <div class="grid grid-cols-12 gap-2 items-end">
+                            <div class="col-span-4">
+                                <label class="mini-note">名稱</label>
+                                <input type="text">
+                            </div>
+                            <div class="col-span-2">
+                                <label class="mini-note text-center">Atk</label>
+                                <input type="text" class="text-center">
+                            </div>
+                            <div class="col-span-6">
+                                <label class="mini-note">特殊效果</label>
+                                <input type="text">
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="mini-note mt-3">
+                        提示：這裡只做紀錄欄位（加值/對特定護甲的修正/特殊規則），方便你桌上直接查。
+                    </div>
+                </div>
+
+                <!-- Armor + Equipment -->
+                <div class="bg-white/30 p-4 border border-ink/10 rounded">
+                    <div class="flex items-center justify-between mb-2">
+                        <label class="stat-label">護甲與一般裝備 Armor & Equipment</label>
+                        <span class="mini-note">防禦/效果</span>
+                    </div>
+
+                    <div class="space-y-3">
+                        <div class="grid grid-cols-12 gap-2 items-end">
+                            <div class="col-span-4">
+                                <label class="mini-note">護甲</label>
+                                <input type="text" placeholder="例如：鎖子甲">
+                            </div>
+                            <div class="col-span-2">
+                                <label class="mini-note text-center">Def</label>
+                                <input type="text" class="text-center" placeholder="+?">
+                            </div>
+                            <div class="col-span-6">
+                                <label class="mini-note">特殊效果</label>
+                                <input type="text" placeholder="物理防禦+2 / 潛行-? / 其他…">
+                            </div>
+                        </div>
+
+                        <div>
+                            <label class="mini-note font-bold">一般裝備清單 Equipment List</label>
+                            <textarea rows="6" placeholder="以條列記錄：工具、資源、消耗品、重要物證…"></textarea>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </section>
+
+        <!-- 6. Cell / Team Notes (可選 / 推薦：新增) -->
+        <section class="mb-8">
+            <h2 class="section-title">結社備註 (Cell Notes)</h2>
+
+            <div class="grid grid-cols-1 lg:grid-cols-3 gap-6">
+                <div class="bg-white/30 p-4 border border-ink/10 rounded">
+                    <label class="stat-label">信任池 Trust Pool</label>
+                    <input type="text" placeholder="例如：4 顆骰 (等於結社人數)">
+                    <div class="mini-note mt-2">結社共享資源，可抽取作為獎勵骰使用。</div>
+                </div>
+
+                <div class="bg-white/30 p-4 border border-ink/10 rounded">
+                    <label class="stat-label">結社資產 Cell Assets</label>
+                    <textarea rows="4" placeholder="盟友、藏身處、神器、關係網…"></textarea>
+                    <div class="mini-note mt-2">Asset Points 常會在此反映為團隊資源去向。</div>
+                </div>
+
+                <div class="bg-white/30 p-4 border border-ink/10 rounded">
+                    <label class="stat-label">開場事件 The Kicker</label>
+                    <textarea rows="4" placeholder="導火線事件：故事開始前把所有人捲進陰謀的那一刻…"></textarea>
+                </div>
+            </div>
+        </section>
+
+    </form>
+
+    <footer class="mt-12 pt-4 border-t border-ink/20 text-center text-xs opacity-50 italic uppercase tracking-widest">
+        Rules Based on Conspiracy of Shadows (First Edition)
+    </footer>
+</div>
+
+<script>
+    // --- 1. 資料庫整合 ---
+    const ETHNICITY_DATA = [
+        {
+            "name": "Valadarin", "translation": "瓦拉達林",
+            "description": "起源於遠東平原，後來定居在波利安北部的民族。擁有龐大的貴族階級，且平民有機會透過戰功晉升。",
+            "social_statuses": [
+                {"name": "Magnates", "translation": "大貴族", "asset_points": 12, "description": "最高統治階層，擁有龐大領地與私人軍隊，權力幾乎與國王等同。"},
+                {"name": "Royalty", "translation": "皇室", "asset_points": 11, "description": "國王或皇室成員，可能是世襲或由貴族與高級神職人員選舉產生。"},
+                {"name": "Clergy", "translation": "神職人員", "asset_points": 9, "description": "知識與靈性的守護者，擁有廣大領地與極高的政治權力。"},
+                {"name": "Merchants", "translation": "商人", "asset_points": 9, "description": "通常受過良好教育的中產階級，財富常超越一般貴族。"},
+                {"name": "Landed Gentry", "translation": "有產鄉紳", "asset_points": 8, "description": "擁有自豪姓氏與小型莊園的貴族家族。"},
+                {"name": "Landless Gentry", "translation": "無產鄉紳", "asset_points": 6, "description": "擁有血統但無領地，作為食客、傭兵或官員謀生。"},
+                {"name": "Peasant Land Owners", "translation": "自耕農", "asset_points": 5, "description": "因功獲得土地的平民，生活在破產的邊緣。"},
+                {"name": "Peasants", "translation": "農民", "asset_points": 3, "description": "為貴族工作的自由平民，有機會改變自身階級。"}
+            ]
+        },
+        {
+            "name": "Vorish", "translation": "沃里亞",
+            "description": "最早定居於波利安的種族，曾建立偉大的城邦。社會階級森嚴，底層生活極其艱難。",
+            "social_statuses": [
+                {"name": "Knights", "translation": "騎士", "asset_points": 10, "description": "社會頂層階級，結合軍事背景與城市政治影響力，視名譽高於一切。"},
+                {"name": "Clergy", "translation": "神職人員", "asset_points": 9, "description": "跨越社會階層，教會擁有廣大領土與獨特權力。"},
+                {"name": "Freemen", "translation": "自由民", "asset_points": 5, "description": "贏得或奪取自由的平民，通常成為商人或反抗體制的亡命之徒。"},
+                {"name": "Peasants", "translation": "農民/農奴", "asset_points": 2, "description": "處於社會最底層，世襲依附於領主莊園，生活宛如奴隸。"}
+            ]
+        },
+        {
+            "name": "Norderin", "translation": "諾德林",
+            "description": "來自嚴寒北方的戰士民族。社會由三個階級組成，男女地位高度平等。",
+            "social_statuses": [
+                {"name": "Those Who Fight", "translation": "戰鬥者", "asset_points": 8, "description": "統治階級，由軍人家族組成，常有血腥世仇。"},
+                {"name": "Those Who Work", "translation": "勞動者", "asset_points": 4, "description": "農夫、漁民與工匠，雖然不是貴族，但同樣受過戰鬥訓練。"},
+                {"name": "Those Who Serve", "translation": "服侍者", "asset_points": 2, "description": "奴隸階級，大多是戰俘或外國人。"}
+            ]
+        },
+        {
+            "name": "Narrlachi", "translation": "納爾拉奇",
+            "description": "來自東方草原的遊牧征服者，以氏族為核心，社會兼容並蓄。",
+            "social_statuses": [
+                {"name": "Royalty", "translation": "皇室", "asset_points": 11, "description": "可汗與各汗國的管理者，掌握臣民的生殺大權。"},
+                {"name": "Patricians", "translation": "外籍顯貴", "asset_points": 10, "description": "受尊重的非納爾拉奇本族商人、工匠與學者。"},
+                {"name": "Noyars", "translation": "諾顏 (氏族長)", "asset_points": 8, "description": "貴族階級，由氏族男性選舉出的首領。"},
+                {"name": "Clergy", "translation": "神職人員", "asset_points": 7, "description": "所有宗教領袖都在社會中受到特別崇敬。"},
+                {"name": "Bahadurs", "translation": "巴哈杜爾 (勇士)", "asset_points": 6, "description": "財富以馬匹衡量，戰時必須服役。"},
+                {"name": "Craftsmen", "translation": "工匠", "asset_points": 5, "description": "為社會提供技術與產品的技藝人員。"},
+                {"name": "Peasants", "translation": "農民/牧民", "asset_points": 2, "description": "放牧馬群的遊牧民，戰時成年男性皆須參軍。"}
+            ]
+        }
+    ];
+
+    const SKILLS_DATA = [
+        { name: "Academics", translation: "學術", description: "神學、鍊金術、歷史與數學。通常只有富人與貴族能負擔此教育。" },
+        { name: "Animal Mastery", translation: "動物馴養", description: "飼養、訓練犬隻、獵鷹或馬匹的能力。" },
+        { name: "Archery", translation: "箭術", description: "使用、保養弓箭與維修技能。" },
+        { name: "Artistry", translation: "藝術", description: "繪畫、雕塑，以及鑑定藝術作品價值的技巧。" },
+        { name: "Craft", translation: "工藝", description: "鐵匠、造船或農耕等專業技藝知識。" },
+        { name: "Decorum", translation: "禮儀", description: "掌握社交行為規範，包含正式場合的交涉能力。" },
+        { name: "Folklore", translation: "民間傳說", description: "了解民族故事、地方傳說與小鎮祕密。" },
+        { name: "Larceny", translation: "盜竊", description: "潛行、撬鎖以及收集街頭情報的犯罪知識。" },
+        { name: "Medicine", translation: "醫學", description: "使用療法治癒傷口，亦可用於製造毒藥。" },
+        { name: "Melee", translation: "近戰", description: "使用各類兵器或將日常物品化為武器的能力。" },
+        { name: "Performance", translation: "表演", description: "演奏、說故事或唱歌，亦可用於假扮他人。" },
+        { name: "Survival", translation: "生存", description: "搭建庇護所、尋找食物與在荒野生存的知識。" }
+    ];
+
+    // --- 2. 控制邏輯 ---
+
+    // A. 種族與階級聯動
+    const ethSelect = document.getElementById('ethnicity-select');
+    const staSelect = document.getElementById('status-select');
+    const ethDesc = document.getElementById('ethnicity-desc');
+    const staDesc = document.getElementById('status-desc');
+    const assetDisplay = document.getElementById('asset-points-display');
+
+    ETHNICITY_DATA.forEach(eth => {
+        ethSelect.add(new Option(`${eth.translation} (${eth.name})`, eth.name));
+    });
+
+    ethSelect.addEventListener('change', () => {
+        const selectedEth = ETHNICITY_DATA.find(e => e.name === ethSelect.value);
+        staSelect.innerHTML = '<option value="">-- 選擇階級 --</option>';
+
+        if (selectedEth) {
+            ethDesc.innerText = selectedEth.description;
+            selectedEth.social_statuses.forEach(s => {
+                staSelect.add(new Option(`${s.translation} (${s.name})`, s.name));
+            });
+            staDesc.innerText = "請選擇一個階級以查看詳細描述...";
+            assetDisplay.innerText = "0";
+        } else {
+            ethDesc.innerText = "請選擇一個文化圈以查看其背景設定...";
+            staDesc.innerText = "請先選擇種族";
+        }
+    });
+
+    staSelect.addEventListener('change', () => {
+        const selectedEth = ETHNICITY_DATA.find(e => e.name === ethSelect.value);
+        if (selectedEth) {
+            const selectedSta = selectedEth.social_statuses.find(s => s.name === staSelect.value);
+            if (selectedSta) {
+                staDesc.innerText = selectedSta.description;
+                assetDisplay.innerText = selectedSta.asset_points;
+            }
+        }
+    });
+
+    // B. 屬性計算與驗證 + Witchblood 展開控制
+    const attrInputs = document.querySelectorAll('.attr-input');
+    const vitDisplay = document.getElementById('vit-display');
+    const wbRankDisplay = document.getElementById('wb-rank-display');
+    const attrCounter = document.getElementById('attr-counter');
+
+    const wbSection = document.getElementById('witchblood-section');
+    const wbRankChip = document.getElementById('wb-rank-chip');
+
+    function updateAttributes() {
+        let fort = parseInt(document.getElementById('attr-fort').value) || 0;
+        let refl = parseInt(document.getElementById('attr-refl').value) || 0;
+        let know = parseInt(document.getElementById('attr-know').value) || 0;
+        let temp = parseInt(document.getElementById('attr-temp').value) || 0;
+
+        const vit = 6 + fort + temp;
+        const wb = Math.ceil((fort + temp) / 2);
+
+        vitDisplay.innerText = vit;
+        wbRankDisplay.innerText = wb;
+
+        // Witchblood section toggle
+        if (wb > 0) {
+            wbSection.classList.remove('hidden');
+            wbRankChip.innerText = wb;
+        } else {
+            wbSection.classList.add('hidden');
+        }
+
+        let total = fort + refl + know + temp;
+        attrCounter.innerText = `分配: ${total} / 11`;
+        attrCounter.className = `counter-badge ${total === 11 ? 'valid' : 'invalid'}`;
+    }
+
+    attrInputs.forEach(i => i.addEventListener('input', updateAttributes));
+
+    // C. 技能生成與驗證
+    const skillGrid = document.getElementById('skills-grid');
+    const skillCounter = document.getElementById('skill-counter');
+
+    for (let i = 0; i < 6; i++) {
+        const div = document.createElement('div');
+        div.className = "skill-card p-3 border border-ink/10 rounded bg-white/30 flex flex-col";
+        div.innerHTML = `
+            <div class="flex gap-2 items-center mb-1">
+                <input type="number" value="0" min="0" max="5" class="skill-rank w-10 text-center font-bold text-blood border-b border-blood/40">
+                <select class="skill-name-select flex-grow text-sm font-bold bg-transparent">
+                    <option value="">-- 技能 --</option>
+                    ${SKILLS_DATA.map(s => `<option value="${s.name}">${s.translation}</option>`).join('')}
+                </select>
+            </div>
+            <input type="text" placeholder="描述詞 (Descriptor)" class="text-[10px] italic mb-1 border-none">
+            <p class="skill-lore text-[11px] leading-tight opacity-70">選擇技能以查看說明...</p>
+        `;
+        skillGrid.appendChild(div);
+    }
+
+    function validateSkills() {
+        let total = 0;
+        document.querySelectorAll('.skill-rank').forEach(input => {
+            total += parseInt(input.value) || 0;
+        });
+        skillCounter.innerText = `分配: ${total} / 17`;
+        skillCounter.className = `counter-badge ${total === 17 ? 'valid' : 'invalid'}`;
+    }
+
+    skillGrid.addEventListener('change', (e) => {
+        if (e.target.classList.contains('skill-name-select')) {
+            const skillName = e.target.value;
+            const skillInfo = SKILLS_DATA.find(s => s.name === skillName);
+            const desc = skillInfo ? skillInfo.description : "選擇技能以查看說明...";
+            e.target.closest('.skill-card').querySelector('.skill-lore').innerText = desc;
+        }
+    });
+
+    skillGrid.addEventListener('input', validateSkills);
+
+    // 初始化
+    updateAttributes();
+    validateSkills();
+</script>
+</body>
+</html>
