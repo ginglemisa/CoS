@@ -462,6 +462,54 @@
                     </div>
                 </div>
             </div>
+
+            <div class="mt-6 bg-white/30 p-4 border border-ink/10 rounded">
+                <div class="flex items-center justify-between mb-2">
+                    <label class="stat-label">基礎裝備資料庫 (Core Equipment JSON)</label>
+                    <span class="mini-note">規則書基礎武器 / 護甲 / 社會優勢</span>
+                </div>
+                <p class="mini-note mb-3">此區可作為快速查表；若要記錄角色實際攜帶內容，請仍填寫上方欄位。</p>
+
+                <div class="overflow-x-auto mb-4">
+                    <table class="w-full text-sm border border-ink/20">
+                        <thead class="bg-black/5">
+                            <tr>
+                                <th class="text-left p-2 border-b border-ink/20">武器 Weapons</th>
+                                <th class="text-left p-2 border-b border-ink/20">Atk</th>
+                                <th class="text-left p-2 border-b border-ink/20">Def</th>
+                                <th class="text-left p-2 border-b border-ink/20">特殊效果</th>
+                            </tr>
+                        </thead>
+                        <tbody id="core-weapons-body"></tbody>
+                    </table>
+                </div>
+
+                <div class="overflow-x-auto mb-4">
+                    <table class="w-full text-sm border border-ink/20">
+                        <thead class="bg-black/5">
+                            <tr>
+                                <th class="text-left p-2 border-b border-ink/20">護甲 Armor</th>
+                                <th class="text-left p-2 border-b border-ink/20">Def</th>
+                                <th class="text-left p-2 border-b border-ink/20">特殊效果</th>
+                            </tr>
+                        </thead>
+                        <tbody id="core-armor-body"></tbody>
+                    </table>
+                </div>
+
+                <div class="overflow-x-auto">
+                    <table class="w-full text-sm border border-ink/20">
+                        <thead class="bg-black/5">
+                            <tr>
+                                <th class="text-left p-2 border-b border-ink/20">社會優勢 Social Advantages</th>
+                                <th class="text-left p-2 border-b border-ink/20">Atk / Def</th>
+                                <th class="text-left p-2 border-b border-ink/20">特殊效果</th>
+                            </tr>
+                        </thead>
+                        <tbody id="core-social-body"></tbody>
+                    </table>
+                </div>
+            </div>
         </section>
 
         <!-- 6. Cell / Team Notes (可選 / 推薦：新增) -->
@@ -560,6 +608,35 @@
         { name: "Performance", translation: "表演", description: "演奏、說故事或唱歌，亦可用於假扮他人。" },
         { name: "Survival", translation: "生存", description: "搭建庇護所、尋找食物與在荒野生存的知識。" }
     ];
+
+    const CORE_EQUIPMENT_DATA = {
+        weapons: [
+            { name: "手斧 (Hand Axe)", atk: "+1 vs 硬甲", def: "-1", effect: "可作為投擲武器使用" },
+            { name: "戰棍 (War Club)", atk: "+1", def: "0", effect: "無" },
+            { name: "匕首與小刀 (Daggers and Knives)", atk: "-2 vs 硬甲", def: "0", effect: "可作投擲與實用工具" },
+            { name: "戰鎚 (Warhammer)", atk: "+3 vs 硬甲", def: "-1", effect: "對抗重裝甲極具破壞力" },
+            { name: "馬弓 (Horsebow)", atk: "+2", def: "0", effect: "可於馬背上高速射擊" },
+            { name: "盾牌 (Shield)", atk: "-2", def: "+2", effect: "最古老的防禦裝備" },
+            { name: "長杖 (Staves)", atk: "+1", def: "+1", effect: "兼具旅行輔助與防身用途" },
+            { name: "長劍 (Long Sword)", atk: "+2 vs 硬甲", def: "0", effect: "輕快且具備穿刺能力" },
+            { name: "軍刀 (Saber)", atk: "+3 vs 軟甲", def: "+1", effect: "輕騎兵主要武器，適合劈砍" }
+        ],
+        armor: [
+            { name: "武裝衣 (Gambeson - 軟甲)", def: "+1", effect: "厚墊襯衫，可與其他護甲疊加穿戴 (Stackable)" },
+            { name: "夾克甲 (Jack - 軟甲)", def: "+1", effect: "便宜且常見的步兵護甲" },
+            { name: "布面甲 (Brigadine - 軟甲)", def: "+2", effect: "內嵌金屬片的靈活護甲" },
+            { name: "鎖子甲 (Chain mail - 硬甲)", def: "+2", effect: "包含頭巾 (Coif) 與半袖" },
+            { name: "札甲 (Lamellar - 硬甲)", def: "+3", effect: "比一般硬甲更具備移動靈活性" },
+            { name: "胸甲 (Cuirass - 硬甲)", def: "+3", effect: "輕量且提供出色防護與移動自由" }
+        ],
+        social_advantages: [
+            { name: "教會權威 (Church Authority)", atk_def: "N/A", effect: "對抗同信仰者，所有判定 +3" },
+            { name: "公會成員 (Guild Membership)", atk_def: "N/A", effect: "涉及自身公會與貿易的判定 +1" },
+            { name: "合法權力 (Legal Authority)", atk_def: "N/A", effect: "對抗司法管轄範圍內的人，所有判定 +2" },
+            { name: "名聲 (Reputation)", atk_def: "N/A", effect: "對抗知道你名聲的人，判定 +2" },
+            { name: "秘密 (Secrets)", atk_def: "N/A", effect: "當向相關人士揭露時，判定 +1" }
+        ]
+    };
 
     // --- 2. 控制邏輯 ---
 
@@ -678,6 +755,42 @@
     });
 
     skillGrid.addEventListener('input', validateSkills);
+
+    // D. 裝備資料表渲染
+    const coreWeaponsBody = document.getElementById('core-weapons-body');
+    const coreArmorBody = document.getElementById('core-armor-body');
+    const coreSocialBody = document.getElementById('core-social-body');
+
+    CORE_EQUIPMENT_DATA.weapons.forEach(item => {
+        const row = document.createElement('tr');
+        row.innerHTML = `
+            <td class="p-2 border-b border-ink/10">${item.name}</td>
+            <td class="p-2 border-b border-ink/10">${item.atk}</td>
+            <td class="p-2 border-b border-ink/10">${item.def}</td>
+            <td class="p-2 border-b border-ink/10">${item.effect}</td>
+        `;
+        coreWeaponsBody.appendChild(row);
+    });
+
+    CORE_EQUIPMENT_DATA.armor.forEach(item => {
+        const row = document.createElement('tr');
+        row.innerHTML = `
+            <td class="p-2 border-b border-ink/10">${item.name}</td>
+            <td class="p-2 border-b border-ink/10">${item.def}</td>
+            <td class="p-2 border-b border-ink/10">${item.effect}</td>
+        `;
+        coreArmorBody.appendChild(row);
+    });
+
+    CORE_EQUIPMENT_DATA.social_advantages.forEach(item => {
+        const row = document.createElement('tr');
+        row.innerHTML = `
+            <td class="p-2 border-b border-ink/10">${item.name}</td>
+            <td class="p-2 border-b border-ink/10">${item.atk_def}</td>
+            <td class="p-2 border-b border-ink/10">${item.effect}</td>
+        `;
+        coreSocialBody.appendChild(row);
+    });
 
     // 初始化
     updateAttributes();
