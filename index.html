@@ -340,8 +340,15 @@
                     <div class="lg:col-span-2 grid grid-cols-1 gap-3">
                         <div>
                             <label class="stat-label">巫血能力清單 Witchblood Powers</label>
-                            <textarea rows="4" placeholder="以條列記錄能力，並可註記觸發條件/消耗…"></textarea>
-                            <div class="mini-note mt-1">你可在每行前加「•」或「-」做條列。</div>
+                            <select id="wb-power-select" class="w-full">
+                                <option value="">-- 選擇巫血能力 --</option>
+                            </select>
+                            <div id="wb-power-details" class="mt-2 p-3 rounded border border-ink/10 bg-black/5 space-y-1">
+                                <p id="wb-power-type" class="mini-note font-bold">判定類型：尚未選擇</p>
+                                <p id="wb-power-roll" class="mini-note">衝突對抗：尚未選擇</p>
+                                <p id="wb-power-effect" class="text-[12px] opacity-80">請先選擇能力以查看效果。</p>
+                            </div>
+                            <div class="mini-note mt-1">每次使用巫血能力都會消耗 1 點生命值 (Vitality Level)。</div>
                         </div>
 
                         <div>
@@ -561,6 +568,26 @@
         { name: "Survival", translation: "生存", description: "搭建庇護所、尋找食物與在荒野生存的知識。" }
     ];
 
+    const WITCHBLOOD_POWERS_DATA = [
+        { name: "強制", en: "Compulsion", type: "Mental", effect: "強迫目標執行單一行動（如傷害自己或無視你）。" },
+        { name: "尋物", en: "Dowsing", type: "None", effect: "感知方圓一英里內特定物品或物品種類的確切位置。" },
+        { name: "邪眼", en: "Evil Eye", type: "Mental", effect: "極度致命的能力，直接讓目標的生命值降至「失能 (Incapacitated)」。" },
+        { name: "千里眼", en: "Far Sight", type: "None", effect: "短暫窺視指定地點正在發生的事件。" },
+        { name: "火舞", en: "Fire Dancing", type: "Physical (若不易燃)", effect: "用意念使物體起火。若對象不易燃（如濕木、血肉）需進行物理衝突判定。" },
+        { name: "霜舞", en: "Frost Dancing", type: "Physical (若為固體)", effect: "用意念使液體結冰。若對象為固體（如金屬、血肉）需進行物理衝突判定。" },
+        { name: "預知", en: "Future Sight", type: "None", effect: "短暫預見未來幾小時內某地可能發生的事（未來可被改變）。" },
+        { name: "幻魅", en: "Glamour", type: "Mental", effect: "製造幻覺欺騙視覺，如製造黑暗、隱形、偽裝他人或製造海市蜃樓。" },
+        { name: "感官強化", en: "Heightened Senses", type: "None", effect: "五感提升至野獸等級，在單次衝突中，所有與五感相關的判定獲得 1 顆獎勵骰 (Bonus die)。" },
+        { name: "恐懼", en: "Horror", type: "Mental", effect: "強迫目標重溫最糟的噩夢，可能導致目標恐慌或發狂（同遭遇超自然恐懼的判定）。" },
+        { name: "心靈語音", en: "Mind Speech", type: "None", effect: "與另一個生物進行心靈溝通，無視語言隔閡。" },
+        { name: "回溯", en: "Past Sight", type: "None", effect: "短暫窺視指定地點過去幾小時內發生的事件。" },
+        { name: "第二視覺", en: "Second Sight", type: "None", effect: "在黑暗或失明中仍能看見，且能看見隱形的靈體或超自然恐懼。" },
+        { name: "沉睡", en: "Sleep", type: "Mental", effect: "強迫幾英尺內的目標陷入數分鐘的深度沉睡，且無法被喚醒。" },
+        { name: "靈魂之手", en: "Spirit Hands", type: "Physical (若對抗活物)", effect: "隔空取物，可漂浮蠟燭或將椅子砸向對手。若用來對抗活物需進行物理衝突判定。" },
+        { name: "爆發", en: "Surge", type: "None", effect: "獲得短暫的非人力量並無視疼痛，在衝突中的所有物理判定獲得 1 顆獎勵骰 (Bonus die)。" },
+        { name: "冥想假死", en: "Trance", type: "None", effect: "控制生理機能，減緩心跳、呼吸甚至老化。除非觀察一小時以上，否則看起來就像死人一樣。" }
+    ];
+
     // --- 2. 控制邏輯 ---
 
     // A. 種族與階級聯動
@@ -610,6 +637,41 @@
 
     const wbSection = document.getElementById('witchblood-section');
     const wbRankChip = document.getElementById('wb-rank-chip');
+    const wbPowerSelect = document.getElementById('wb-power-select');
+    const wbPowerType = document.getElementById('wb-power-type');
+    const wbPowerRoll = document.getElementById('wb-power-roll');
+    const wbPowerEffect = document.getElementById('wb-power-effect');
+
+    function getWitchbloodConflict(type) {
+        if (type.includes('Mental')) {
+            return 'BLD/TEM 對抗 KNW/TEM（精神衝突）';
+        }
+        if (type.includes('Physical')) {
+            return 'BLD/TEM 對抗 FOR/REF（物理衝突）';
+        }
+        return '通常無需衝突判定（依敘事與 GM 裁定）';
+    }
+
+    function initWitchbloodPowers() {
+        WITCHBLOOD_POWERS_DATA.forEach(power => {
+            wbPowerSelect.add(new Option(`${power.name} (${power.en})`, power.en));
+        });
+    }
+
+    wbPowerSelect.addEventListener('change', () => {
+        const selectedPower = WITCHBLOOD_POWERS_DATA.find(power => power.en === wbPowerSelect.value);
+
+        if (!selectedPower) {
+            wbPowerType.innerText = '判定類型：尚未選擇';
+            wbPowerRoll.innerText = '衝突對抗：尚未選擇';
+            wbPowerEffect.innerText = '請先選擇能力以查看效果。';
+            return;
+        }
+
+        wbPowerType.innerText = `判定類型：${selectedPower.type}`;
+        wbPowerRoll.innerText = `衝突對抗：${getWitchbloodConflict(selectedPower.type)}`;
+        wbPowerEffect.innerText = `能力效果：${selectedPower.effect}`;
+    });
 
     function updateAttributes() {
         let fort = parseInt(document.getElementById('attr-fort').value) || 0;
@@ -682,6 +744,7 @@
     // 初始化
     updateAttributes();
     validateSkills();
+    initWitchbloodPowers();
 </script>
 </body>
 </html>
